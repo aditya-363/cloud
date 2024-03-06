@@ -30,9 +30,9 @@ class Topology(Topo):
         coreSwitchCount = HALF_N
         
         
-        hosts = [self.addHost("h{}".format(i)) for i in range(1, hostCount+1)]
-        edgeSwitches = [self.addSwitch("s{}".format(i) ) for i in range(1, edgeSwitchCount +1)]
-        coreSwitches = [self.addSwitch("s{}".format(i) ) for i in range(1, coreSwitchCount +1)]
+        hosts = [self.addHost("h{}".format(i)) for i in range(1, hostCount + 1)]
+        edgeSwitches = [self.addSwitch("s{}".format(i) ) for i in range(1, edgeSwitchCount + 1)]
+        coreSwitches = [self.addSwitch("s{}".format(i) ) for i in range(edgeSwitchCount + 1, edgeSwitchCount + coreSwitchCount + 1)]
 
         for i, host in enumerate(hosts):
             self.addLink(edgeSwitches[i % edgeSwitchCount], host)
