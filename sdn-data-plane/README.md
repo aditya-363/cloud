@@ -58,6 +58,6 @@ topology defined in custom-mininet-topo.py
 
 ### Exception: Please shut down the controller which is running on port 6653
 
-    ```
-    sudo fuser -k 6653/tcp
-    ```
+```
+sudo fuser -k 6653/tcp
+```
