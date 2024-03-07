@@ -7,10 +7,10 @@
 create the topology and manually install flow entries
 
 1. Traffic from H1 -> H2
-    -  HTTP traffic with port=80 follows path: A-B-D
+    -  HTTP traffic with destination port=80 follows path: A-B-D
     -  other traffic follows path: A-C-E-D
 2. Traffic from H2 -> H1
-    - HTTP traffic with port=80, follow path: D-C-A
+    - HTTP traffic with source port=80, follow path: D-C-A
     - other traffic follows path: D-B-E-C-A
 
 
@@ -28,16 +28,16 @@ create the topology and manually install flow entries
 
     commands used in mininet
     ```
-    h1 hping3 -c 1000 -p 80 h2
+    h1 hping3 -c -p 80 h2
     ```
     ```
-    h1 hping3 -c 1000 -p ++81 h2
+    h1 hping3 -c -p 1234 h2
     ```
     ```
-    h2 hping3 -c 1000 -p 80 h1 
+    h2 hping3 -c -s 80 h1 
     ```
     ```
-    h2 hping3 -c 1000 -p ++81 h1 
+    h2 hping3 -c -p 1234 h1 
     ```
 
 
