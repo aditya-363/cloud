@@ -24,21 +24,6 @@ create the topology and manually install flow entries
     chmod +x add_flows.sh
     ./add_flows.sh
     ```
-3. produce different traffics and verify them using Wireshark
-
-    commands used in mininet
-    ```
-    h1 hping3 -c -p 80 h2
-    ```
-    ```
-    h1 hping3 -c -p 1234 h2
-    ```
-    ```
-    h2 hping3 -c -s 80 h1 
-    ```
-    ```
-    h2 hping3 -c -p 1234 h1 
-    ```
 
 
 ## 2. Two-Stage Fat Tree Topology
