@@ -78,7 +78,14 @@ class SimpleSwitch13(app_manager.RyuApp):
         self.mac_to_port.setdefault(dpid, {})
 
         self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
-
+        if(src=='10:00:00:00:00:02' or src=='10:00:00:00:00:04'):
+            if(pkt_tcp.dst_port == 80):
+                p=packet.Packet()
+                p.add_protocol(ethernet.ethernet(ethertype=eth.ethertype,src=dst, dst=src))
+                p.add_protocol(ipv4.ipv4(src=pkt_ipv4.dst, dst=pkt_ipv4.src, proto=6))
+                p.add_protocol(tcp.tcp(src_port = pkt_tcp.dst_port, dst_port = pkt_tcp.src_port, ack=pkt_tcp.seq+1, bits=0b010100))
+                self._send_packet(datapath, in_port, p)
+                print("TCP RST sent")
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
         if dst in self.mac_to_port[dpid]:
