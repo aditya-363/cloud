@@ -4,8 +4,7 @@ from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import ether_types
+from ryu.lib.packet import ethernet, arp, ipv4, icmp, udp, tcp
 
 
 class SimpleSwitch13(app_manager.RyuApp):
@@ -15,7 +14,10 @@ class SimpleSwitch13(app_manager.RyuApp):
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         self.ip_to_mac = {
-            
+            '10.0.0.1': '00:00:00:00:00:01',
+            '10.0.0.2': '00:00:00:00:00:02',
+            '10.0.0.3': '00:00:00:00:00:03',
+            '10.0.0.4': '00:00:00:00:00:04'
         }
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -63,15 +65,14 @@ class SimpleSwitch13(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
-
         pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocols(ethernet.ethernet)[0]
-
-        if eth.ethertype == ether_types.ETH_TYPE_LLDP:
-            # ignore lldp packet
+        self.logger.info("packet-in %s" % (pkt,))
+        pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
+        if not pkt_eth:
             return
-        dst = eth.dst
-        src = eth.src
+
+        dst = pkt_eth.dst
+        src = pkt_eth.src
 
         dpid = format(datapath.id, "d").zfill(16)
         self.mac_to_port.setdefault(dpid, {})
@@ -80,12 +81,10 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
-
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
         else:
             out_port = ofproto.OFPP_FLOOD
-
         actions = [parser.OFPActionOutput(out_port)]
 
         # install a flow to avoid packet_in next time
@@ -98,10 +97,51 @@ class SimpleSwitch13(app_manager.RyuApp):
                 return
             else:
                 self.add_flow(datapath, 1, match, actions)
-        data = None
-        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
-            data = msg.data
 
-        out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
-                                  in_port=in_port, actions=actions, data=data)
+        pkt_arp = pkt.get_protocol(arp.arp)
+        if pkt_arp:
+            self._handle_arp(datapath, in_port, pkt_eth, pkt_arp)
+            return
+        # pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
+        # if pkt_ipv4:
+        #     pkt_icmp = pkt.get_protocol(icmp.icmp)
+        #     pkt_udp = pkt.get_protocol(udp.udp)
+        #     pkt_tcp = pkt.get_protocol(tcp.tcp)
+
+        #     if pkt_icmp:
+        #         # handle icmp
+        #         return
+        #     elif pkt_udp:
+        #         # handle udp
+        #         return
+        #     elif pkt_tcp:
+        #         # handle tcp
+        #         return
+    
+    def _handle_arp(self, datapath, port, pkt_ethernet, pkt_arp):
+        if pkt_arp.opcode != arp.ARP_REQUEST:
+            return
+        pkt = packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(ethertype=pkt_ethernet.ethertype,
+                                           dst=pkt_ethernet.src,
+                                           src=self.ip_to_mac[pkt_arp.dst_ip]))
+        pkt.add_protocol(arp.arp(opcode=arp.ARP_REPLY,
+                                 src_mac=self.ip_to_mac[pkt_arp.dst_ip],
+                                 src_ip=pkt_arp.dst_ip,
+                                 dst_mac=pkt_arp.src_mac,
+                                 dst_ip=pkt_arp.src_ip))
+        self._send_packet(datapath, port, pkt)
+
+    def _send_packet(self, datapath, port, pkt):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        pkt.serialize()
+        self.logger.info("packet-out %s" % (pkt,))
+        data = pkt.data
+        actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER,
+                                  actions=actions,
+                                  data=data)
         datapath.send_msg(out)
