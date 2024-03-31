@@ -70,7 +70,8 @@ class SimpleSwitch13(app_manager.RyuApp):
         pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
         if not pkt_eth:
             return
-
+        pkt_ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
+        pkt_tcp = pkt.get_protocols(tcp.tcp)[0]
         dst = pkt_eth.dst
         src = pkt_eth.src
 
